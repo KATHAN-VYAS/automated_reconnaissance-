@@ -25,3 +25,7 @@ DNS Records: Includes subdomains like mail, ftp, blog, and demo.
 
 note: 
 make sure to add your api key of dnsdumpster in the code and install required libraries
+
+- for installing required libraries : 
+1. install requirements.txt
+2. run: pip install -r requirements.txt

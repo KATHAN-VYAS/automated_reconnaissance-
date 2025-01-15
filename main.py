@@ -1,5 +1,5 @@
 #importing libraries
-
+import streamlit as st
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -14,9 +14,16 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import ssl
 import socket
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from datetime import datetime
+from reportlab.lib import colors
 
 # api key for DNS dumpster
-api_key = "----------------------------------" #your api key
+
+st.title("Domain Reconnaissance Tool")
+api_key = "---------------------------------------------------" #your api key
 
 #function doing webscrapping from nslookup
 def scrape_dns_records(domain):
@@ -217,80 +224,7 @@ def fetch_geolocation(ip_address):
     except Exception as e:
         print(f"Error fetching geolocation: {e}")
         return None
-# User input for domain
-domain = input("Enter the domain (e.g., example.com): ")
-
-ip_address,email_address = scrape_dns_records(domain)
-
-# Fetch DNS records
-dns_records = fetch_dns_records(api_key, domain)
-
-if dns_records:
-    print("DNS Records:")
-    print(dns_records)
     
-a = dns_records["a"]
-for i in a :
-    host = i["host"]
-    if host:
-        print("Host: " + host)
-    ips = i["ips"]
-    
-    #var3 : application service name
-    try:
-        app_service = ips[0]["banners"]["http"]["apps"]
-    except Exception as e:
-        app_service = "No information"
-    #var: country
-    try:
-        country = ips[0]["country"]
-    except Exception as e:
-        country = "No information"
-    print("country: ", country)
-    #var: service
-    if app_service:    
-        print("App Service: ", app_service)
-    #var4: service title
-    try:
-        service_title = ips[0]["banners"]["http"]["title"]
-    except Exception as e:
-        service_title = "No information"
-    
-    if service_title:
-        print("Service Title: ", service_title)
-    
-ns = dns_records["ns"]
-
-#var 5,6 ns host and ip address
-ns_host = []
-ns_host_ip = []
-
-for i in ns:
-    ns_host.append(i["host"])
-    
-    ips = i["ips"]
-    for j in ips:
-        ns_host_ip.append(j["ip"])
-        
-print(ns_host)
-print(ns_host_ip)
-
-dns_brute_results = advanced_recon(domain)
-
-# Print the results
-print("\nDNS Brute-force Results:")
-for entry in dns_brute_results:
-    print(f"Domain: {entry['domain']}, IP: {entry['ip']}")
-
-hops_dict = trace_hops(domain)
-
-open_ports, filtered_ports = port_scan(domain)
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from datetime import datetime
-from reportlab.lib import colors
-
 def create_pdf(email_add, ip_add, ns_host, ns_host_ip, app_service, service_title, dns_brute_results, hops_dict, open_ports, filtered_ports, domain):
     pdf_file = f"{domain}_details.pdf"
 
@@ -429,5 +363,81 @@ def create_pdf(email_add, ip_add, ns_host, ns_host_ip, app_service, service_titl
     doc.build(elements)
     print(f"PDF saved as {pdf_file}")
 
-# Generate the PDF report
-create_pdf(email_address, ip_address, ns_host, ns_host_ip, app_service, service_title, dns_brute_results, hops_dict, open_ports, filtered_ports, domain)
+# User input for domain
+domain = st.text_input("Enter the domain (e.g., example.com):")
+
+if st.button("Run Reconnaissance"):
+    if domain:
+        # Display "Sit back and relax"
+        with st.spinner("Sit back and relax..."):
+
+            ip_address,email_address = scrape_dns_records(domain)
+
+            # Fetch DNS records
+            dns_records = fetch_dns_records(api_key, domain)
+
+            if dns_records:
+                print("DNS Records:")
+                print(dns_records)
+                
+            a = dns_records["a"]
+            for i in a :
+                host = i["host"]
+                if host:
+                    print("Host: " + host)
+                ips = i["ips"]
+                
+                #var3 : application service name
+                try:
+                    app_service = ips[0]["banners"]["http"]["apps"]
+                except Exception as e:
+                    app_service = "No information"
+                #var: country
+                try:
+                    country = ips[0]["country"]
+                except Exception as e:
+                    country = "No information"
+                print("country: ", country)
+                #var: service
+                if app_service:    
+                    print("App Service: ", app_service)
+                #var4: service title
+                try:
+                    service_title = ips[0]["banners"]["http"]["title"]
+                except Exception as e:
+                    service_title = "No information"
+                
+                if service_title:
+                    print("Service Title: ", service_title)
+                
+            ns = dns_records["ns"]
+
+            #var 5,6 ns host and ip address
+            ns_host = []
+            ns_host_ip = []
+
+            for i in ns:
+                ns_host.append(i["host"])
+                
+                ips = i["ips"]
+                for j in ips:
+                    ns_host_ip.append(j["ip"])
+                    
+            print(ns_host)
+            print(ns_host_ip)
+
+            dns_brute_results = advanced_recon(domain)
+
+            # Print the results
+            print("\nDNS Brute-force Results:")
+            for entry in dns_brute_results:
+                print(f"Domain: {entry['domain']}, IP: {entry['ip']}")
+
+            hops_dict = trace_hops(domain)
+            open_ports, filtered_ports = port_scan(domain)
+
+            # Generate the PDF report
+            create_pdf(email_address, ip_address, ns_host, ns_host_ip, app_service, service_title, dns_brute_results, hops_dict, open_ports, filtered_ports, domain)
+            st.success("Finished! The PDF report has been generated.")
+    else:
+        st.warning("Please enter a valid domain.")
